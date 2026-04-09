@@ -1,3 +1,11 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -13,6 +21,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -30,15 +39,27 @@ android {
         versionName = flutter.versionName
     }
 
-    buildTypes {
+    signingConfigs {
+    create("release") {
+        keyAlias = "cyberguard"
+        keyPassword = "alma2019"
+        storeFile = file("C:/dev/cyberguard_ai/cyberguard_ai2.jks")
+        storePassword = "alma2019"
+    }
+}
+buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+           signingConfig = signingConfigs.getByName("release")
+        isMinifyEnabled = false
+        isShrinkResources = false
         }
     }
 }
 
 flutter {
+  
     source = "../.."
+}
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
