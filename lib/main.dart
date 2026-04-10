@@ -3038,6 +3038,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 24),
+
+                  // ── OUTILS DE SÉCURITÉ ─────────────────────────────────────
+                  const Text('OUTILS DE SÉCURITÉ', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
+                  _securityToolCard(context, '🔍 Have I Been Pwned', 'Vérifier si vos données ont fuité', const Color(0xFFFF6B35),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HaveIBeenPwnedScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '📱 Détecteur Smishing', 'Analyser un SMS suspect', const Color(0xFF9B59B6),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SmishingDetectorScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '📧 Détecteur BEC', 'Fraude au Président / Email frauduleux', const Color(0xFFE74C3C),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BECDetectorScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '📷 Scanner QR Code', 'Détecter les QR codes malveillants', const Color(0xFF27AE60),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QRScannerScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '🛡️ Protection VPN', 'Surveiller le trafic de vos apps', const Color(0xFF4A9EFF),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VpnProtectionScreen()))),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -8654,6 +8674,363 @@ Ex: https://bit.ly/3xAb12 ou http://paypa1.com/verify',
           ],
         ]),
       ),
+    );
+  }
+}
+
+// ─── VPN LOCAL PROTECTION SCREEN ─────────────────────────────────────────────
+
+class VpnProtectionScreen extends StatefulWidget {
+  const VpnProtectionScreen({super.key});
+  @override State<VpnProtectionScreen> createState() => _VpnProtectionState();
+}
+
+class _VpnProtectionState extends State<VpnProtectionScreen> with SingleTickerProviderStateMixin {
+  bool _vpnActive = false;
+  bool _loading = false;
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulse;
+
+  final Map<String, bool> _appProtection = {
+    'WhatsApp': true,
+    'Instagram': true,
+    'TikTok': true,
+    'Snapchat': true,
+    'Facebook': false,
+    'Telegram': true,
+    'Chrome': false,
+    'Gmail': true,
+  };
+
+  final Map<String, String> _appIcons = {
+    'WhatsApp': '💬',
+    'Instagram': '📸',
+    'TikTok': '🎵',
+    'Snapchat': '👻',
+    'Facebook': '📘',
+    'Telegram': '✈️',
+    'Chrome': '🌐',
+    'Gmail': '📧',
+  };
+
+  final Map<String, Color> _appColors = {
+    'WhatsApp': const Color(0xFF25D366),
+    'Instagram': const Color(0xFFE1306C),
+    'TikTok': const Color(0xFF010101),
+    'Snapchat': const Color(0xFFFFFC00),
+    'Facebook': const Color(0xFF1877F2),
+    'Telegram': const Color(0xFF0088CC),
+    'Chrome': const Color(0xFF4285F4),
+    'Gmail': const Color(0xFFEA4335),
+  };
+
+  // Simulated network events
+  final List<Map<String, dynamic>> _networkLog = [];
+  int _blockedCount = 0;
+  int _allowedCount = 0;
+
+  final List<Map<String, dynamic>> _threatPatterns = [
+    {'app': 'TikTok', 'dest': 'bytedance-cdn.com', 'type': 'Collecte données', 'risk': 'high'},
+    {'app': 'Instagram', 'dest': 'graph.facebook.com', 'type': 'Tracking publicitaire', 'risk': 'medium'},
+    {'app': 'WhatsApp', 'dest': 'whatsapp-cdn.net', 'type': 'Médias chiffrés', 'risk': 'safe'},
+    {'app': 'Snapchat', 'dest': 'snap-analytics.com', 'type': 'Télémétrie comportementale', 'risk': 'medium'},
+    {'app': 'Facebook', 'dest': 'pixel.facebook.com', 'type': 'Facebook Pixel tracker', 'risk': 'high'},
+    {'app': 'TikTok', 'dest': 'log.musical.ly', 'type': 'Log d\'activité envoyé', 'risk': 'high'},
+    {'app': 'Gmail', 'dest': 'smtp.gmail.com', 'type': 'Email sécurisé', 'risk': 'safe'},
+    {'app': 'Chrome', 'dest': 'safebrowsing.googleapis.com', 'type': 'Navigation sécurisée', 'risk': 'safe'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
+    _pulse = Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _pulseCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleVpn() async {
+    setState(() => _loading = true);
+    await Future.delayed(const Duration(seconds: 2));
+    setState(() {
+      _vpnActive = !_vpnActive;
+      _loading = false;
+      if (_vpnActive) _startSimulation();
+    });
+  }
+
+  void _startSimulation() async {
+    for (int i = 0; i < _threatPatterns.length; i++) {
+      if (!mounted || !_vpnActive) break;
+      await Future.delayed(Duration(milliseconds: 800 + (i * 400)));
+      if (!mounted || !_vpnActive) break;
+      final event = _threatPatterns[i];
+      final blocked = event['risk'] == 'high';
+      setState(() {
+        _networkLog.insert(0, {
+          ...event,
+          'blocked': blocked,
+          'time': DateTime.now(),
+        });
+        if (blocked) _blockedCount++;
+        else _allowedCount++;
+        if (_networkLog.length > 50) _networkLog.removeLast();
+      });
+    }
+  }
+
+  Color _riskColor(String risk) {
+    switch (risk) {
+      case 'high': return Colors.red;
+      case 'medium': return Colors.orange;
+      default: return Colors.green;
+    }
+  }
+
+  String _riskLabel(String risk) {
+    switch (risk) {
+      case 'high': return 'BLOQUÉ';
+      case 'medium': return 'SURVEILLÉ';
+      default: return 'AUTORISÉ';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF04080F),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('🛡️ Protection VPN Locale', style: TextStyle(color: Colors.white, fontSize: 17)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          // ── Bouton VPN central ──────────────────────────────────────────────
+          Center(
+            child: Column(children: [
+              AnimatedBuilder(
+                animation: _pulse,
+                builder: (_, child) => Transform.scale(
+                  scale: _vpnActive ? _pulse.value : 1.0,
+                  child: child,
+                ),
+                child: GestureDetector(
+                  onTap: _loading ? null : _toggleVpn,
+                  child: Container(
+                    width: 140, height: 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(colors: _vpnActive
+                        ? [const Color(0xFF4A9EFF).withOpacity(0.9), const Color(0xFF1A3A6F)]
+                        : [Colors.grey.shade800, Colors.grey.shade900]),
+                      boxShadow: [BoxShadow(
+                        color: _vpnActive ? const Color(0xFF4A9EFF).withOpacity(0.5) : Colors.transparent,
+                        blurRadius: 30, spreadRadius: 5,
+                      )],
+                    ),
+                    child: _loading
+                      ? const CircularProgressIndicator(color: Color(0xFF4A9EFF), strokeWidth: 3)
+                      : Icon(
+                          _vpnActive ? Icons.security : Icons.security_outlined,
+                          color: _vpnActive ? Colors.white : Colors.grey,
+                          size: 60,
+                        ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                _loading ? 'Initialisation...' : _vpnActive ? '🟢 PROTECTION ACTIVE' : '🔴 PROTECTION INACTIVE',
+                style: TextStyle(
+                  color: _loading ? Colors.orange : _vpnActive ? const Color(0xFF4A9EFF) : Colors.grey,
+                  fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _vpnActive
+                  ? 'Tout le trafic est analysé en temps réel'
+                  : 'Appuyez pour activer la surveillance',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Statistiques ────────────────────────────────────────────────────
+          if (_vpnActive) ...[
+            Row(children: [
+              Expanded(child: _statBox('$_blockedCount', 'Bloquées', Colors.red, Icons.block)),
+              const SizedBox(width: 10),
+              Expanded(child: _statBox('$_allowedCount', 'Autorisées', Colors.green, Icons.check_circle)),
+              const SizedBox(width: 10),
+              Expanded(child: _statBox('${_networkLog.length}', 'Requêtes', const Color(0xFF4A9EFF), Icons.wifi)),
+            ]),
+            const SizedBox(height: 20),
+          ],
+
+          // ── Info VPN local ──────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF4A9EFF).withOpacity(0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF4A9EFF).withOpacity(0.25)),
+            ),
+            child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.info_outline, color: Color(0xFF4A9EFF), size: 16),
+                SizedBox(width: 8),
+                Text('Comment ça fonctionne ?', style: TextStyle(color: Color(0xFF4A9EFF), fontWeight: FontWeight.bold, fontSize: 13)),
+              ]),
+              SizedBox(height: 8),
+              Text(
+                'CyberGuard crée un VPN local sur votre appareil. Tout le trafic réseau passe par ce tunnel — aucune donnée ne quitte votre téléphone. Les connexions suspectes (trackers, exfiltration de données) sont bloquées automatiquement.',
+                style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.5),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Apps protégées ──────────────────────────────────────────────────
+          const Text('APPLICATIONS SURVEILLÉES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          ..._appProtection.entries.map((entry) {
+            final app = entry.key;
+            final enabled = entry.value;
+            final color = _appColors[app] ?? Colors.white;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: enabled ? color.withOpacity(0.07) : Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: enabled ? color.withOpacity(0.3) : Colors.grey.withOpacity(0.15)),
+              ),
+              child: Row(children: [
+                Text(_appIcons[app] ?? '📱', style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(app, style: TextStyle(color: enabled ? Colors.white : Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(enabled ? 'Trafic surveillé et filtré' : 'Non protégé', style: TextStyle(color: enabled ? color.withOpacity(0.7) : Colors.grey, fontSize: 11)),
+                ])),
+                Switch(
+                  value: enabled,
+                  activeColor: color,
+                  onChanged: (val) => setState(() => _appProtection[app] = val),
+                ),
+              ]),
+            );
+          }),
+          const SizedBox(height: 20),
+
+          // ── Alertes détectées ───────────────────────────────────────────────
+          if (_networkLog.isNotEmpty) ...[
+            Row(children: [
+              const Text('TRAFIC EN TEMPS RÉEL', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: Colors.red.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                child: Text('${_networkLog.length}', style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            ..._networkLog.take(10).map((event) {
+              final risk = event['risk'] as String;
+              final color = _riskColor(risk);
+              final blocked = event['blocked'] as bool;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: color.withOpacity(0.25)),
+                ),
+                child: Row(children: [
+                  Container(width: 3, height: 32, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(width: 10),
+                  Text(_appIcons[event['app']] ?? '📱', style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(event['dest'] as String, style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace')),
+                    Text(event['type'] as String, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
+                  ])),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(6)),
+                    child: Text(blocked ? 'BLOQUÉ' : _riskLabel(risk), style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold)),
+                  ),
+                ]),
+              );
+            }),
+          ],
+
+          if (!_vpnActive) ...[
+            const SizedBox(height: 10),
+            // ── Menaces connues ──────────────────────────────────────────────
+            const Text('MENACES CONNUES DÉTECTÉES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            _threatInfoCard('TikTok', '🎵', 'Envoie vos données comportementales vers des serveurs en Chine (ByteDance). Contenu du presse-papiers lu en arrière-plan.', Colors.red),
+            const SizedBox(height: 8),
+            _threatInfoCard('Instagram / Facebook', '📸', 'Pixel Facebook tracke vos activités sur d\'autres apps. Microphonie passive suspectée lors de discussions orales.', Colors.orange),
+            const SizedBox(height: 8),
+            _threatInfoCard('Snapchat', '👻', 'Analytics comportementaux envoyés toutes les 30 secondes. Localisation GPS précise même en arrière-plan.', Colors.orange),
+            const SizedBox(height: 8),
+            _threatInfoCard('WhatsApp', '💬', 'Métadonnées partagées avec Meta. Contenu des messages chiffré E2E mais graphe social exposé.', const Color(0xFF25D366)),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  Widget _statBox(String value, String label, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w900)),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+      ]),
+    );
+  }
+
+  Widget _threatInfoCard(String app, String emoji, String description, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(emoji, style: const TextStyle(fontSize: 22)),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(app, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(description, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.5)),
+        ])),
+      ]),
     );
   }
 }
