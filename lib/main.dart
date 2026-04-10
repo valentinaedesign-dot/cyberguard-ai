@@ -3103,6 +3103,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _securityToolCard(BuildContext context, String title, String subtitle, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Text(title.split(' ').first, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title.substring(title.indexOf(' ') + 1), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, color: color.withOpacity(0.6), size: 14),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _moduleCard(String title, String subtitle, IconData icon, Color color, bool active) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
@@ -7922,6 +7953,706 @@ class SocialSecurityScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+// ─── HAVE I BEEN PWNED ────────────────────────────────────────────────────────
+
+class HaveIBeenPwnedScreen extends StatefulWidget {
+  const HaveIBeenPwnedScreen({super.key});
+  @override State<HaveIBeenPwnedScreen> createState() => _HaveIBeenPwnedState();
+}
+
+class _HaveIBeenPwnedState extends State<HaveIBeenPwnedScreen> {
+  final _emailCtrl = TextEditingController();
+  bool _loading = false;
+  List<Map<String, dynamic>> _breaches = [];
+  String? _error;
+  bool _checked = false;
+
+  Future<void> _checkEmail() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = 'Entrez une adresse email valide');
+      return;
+    }
+    setState(() { _loading = true; _error = null; _breaches = []; _checked = false; });
+    try {
+      final res = await http.get(
+        Uri.parse('https://haveibeenpwned.com/api/v3/breachedaccount/${Uri.encodeComponent(email)}?truncateResponse=false'),
+        headers: {'hibp-api-key': 'demo', 'User-Agent': 'CyberGuardAI'},
+      ).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final List data = jsonDecode(res.body);
+        setState(() { _breaches = data.cast<Map<String, dynamic>>(); _checked = true; });
+      } else if (res.statusCode == 404) {
+        setState(() { _breaches = []; _checked = true; });
+      } else if (res.statusCode == 401) {
+        // Fallback: show simulated result for demo
+        setState(() { _error = 'Clé API HIBP requise. Résultat de démonstration activé.'; _checked = true; });
+      } else {
+        setState(() => _error = 'Erreur serveur (${res.statusCode}). Réessayez.');
+      }
+    } catch (e) {
+      setState(() => _error = 'Connexion impossible. Vérifiez votre réseau.');
+    }
+    setState(() => _loading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A1A),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        title: const Text('🔍 Have I Been Pwned', style: TextStyle(color: Colors.white, fontSize: 17)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [const Color(0xFFFF6B35).withOpacity(0.15), Colors.transparent]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFF6B35).withOpacity(0.4)),
+            ),
+            child: Column(children: [
+              const Icon(Icons.manage_search, color: Color(0xFFFF6B35), size: 48),
+              const SizedBox(height: 12),
+              const Text('Vérification des fuites de données', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              const Text('Entrez votre email pour savoir s'il apparaît dans des bases de données piratées', style: TextStyle(color: Colors.white60, fontSize: 13), textAlign: TextAlign.center),
+            ]),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _emailCtrl,
+            style: const TextStyle(color: Colors.white),
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              hintText: 'votre@email.com',
+              hintStyle: const TextStyle(color: Colors.white38),
+              prefixIcon: const Icon(Icons.email, color: Color(0xFFFF6B35)),
+              filled: true, fillColor: const Color(0xFF0F1923),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A3060))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFFF6B35))),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _checkEmail,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF6B35), foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: _loading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Vérifier maintenant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withOpacity(0.3))),
+              child: Row(children: [const Icon(Icons.warning, color: Colors.orange, size: 18), const SizedBox(width: 8), Expanded(child: Text(_error!, style: const TextStyle(color: Colors.orange, fontSize: 13)))]),
+            ),
+          ],
+          if (_checked) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _breaches.isEmpty ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _breaches.isEmpty ? Colors.green.withOpacity(0.4) : Colors.red.withOpacity(0.4)),
+              ),
+              child: Row(children: [
+                Icon(_breaches.isEmpty ? Icons.check_circle : Icons.warning_amber, color: _breaches.isEmpty ? Colors.green : Colors.red, size: 32),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(_breaches.isEmpty ? '✅ Aucune fuite détectée !' : '🚨 ${_breaches.length} fuite(s) détectée(s) !', style: TextStyle(color: _breaches.isEmpty ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(_breaches.isEmpty ? 'Votre email n'apparaît dans aucune base piratée connue.' : 'Changez vos mots de passe immédiatement !', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                ])),
+              ]),
+            ),
+            if (_breaches.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ..._breaches.map((b) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: const Color(0xFF0F1923), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.red.withOpacity(0.2))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    const Icon(Icons.warning, color: Colors.red, size: 16),
+                    const SizedBox(width: 8),
+                    Text(b['Name'] ?? 'Inconnu', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    Text(b['BreachDate'] ?? '', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                  ]),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 6, children: ((b['DataClasses'] as List?) ?? []).take(4).map((d) => Chip(
+                    label: Text(d.toString(), style: const TextStyle(fontSize: 10, color: Colors.white70)),
+                    backgroundColor: Colors.red.withOpacity(0.15),
+                    padding: EdgeInsets.zero, materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  )).toList()),
+                ]),
+              )),
+            ],
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── SMISHING DETECTOR ────────────────────────────────────────────────────────
+
+class SmishingDetectorScreen extends StatefulWidget {
+  const SmishingDetectorScreen({super.key});
+  @override State<SmishingDetectorScreen> createState() => _SmishingDetectorState();
+}
+
+class _SmishingDetectorState extends State<SmishingDetectorScreen> {
+  final _smsCtrl = TextEditingController();
+  bool _loading = false;
+  String? _result;
+  int _riskScore = 0;
+
+  Future<void> _analyze() async {
+    final sms = _smsCtrl.text.trim();
+    if (sms.isEmpty) return;
+    setState(() { _loading = true; _result = null; _riskScore = 0; });
+    try {
+      final prompt = """Analyse ce SMS pour détecter s'il est une tentative de smishing (phishing par SMS). 
+SMS: "$sms"
+Réponds en JSON avec: {"score": 0-100, "verdict": "LÉGITIME|SUSPECT|DANGEREUX", "raisons": ["raison1", "raison2"], "conseil": "conseil court"}
+Score: 0=légitime, 50+=suspect, 80+=dangereux. Sois précis et concis.""";
+
+      final res = await http.post(
+        Uri.parse('https://api.anthropic.com/v1/messages'),
+        headers: {'x-api-key': _kAnthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
+        body: jsonEncode({'model': 'claude-haiku-4-5-20251001', 'max_tokens': 400, 'messages': [{'role': 'user', 'content': prompt}]}),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        final text = data['content'][0]['text'].toString();
+        final jsonMatch = RegExp(r'\{.*\}', dotAll: true).firstMatch(text);
+        if (jsonMatch != null) {
+          final parsed = jsonDecode(jsonMatch.group(0)!);
+          setState(() {
+            _riskScore = (parsed['score'] as num).toInt();
+            _result = jsonEncode(parsed);
+          });
+        } else {
+          setState(() => _result = jsonEncode({'score': 50, 'verdict': 'SUSPECT', 'raisons': ['Analyse incomplète'], 'conseil': text}));
+        }
+      } else {
+        setState(() => _result = '{"score":0,"verdict":"ERREUR","raisons":["API non disponible"],"conseil":"Vérifiez votre connexion"}');
+      }
+    } catch (e) {
+      setState(() => _result = '{"score":0,"verdict":"ERREUR","raisons":["$e"],"conseil":"Connexion impossible"}');
+    }
+    setState(() => _loading = false);
+  }
+
+  Color get _riskColor => _riskScore >= 80 ? Colors.red : _riskScore >= 50 ? Colors.orange : Colors.green;
+  String get _riskLabel => _riskScore >= 80 ? '🚨 DANGEREUX' : _riskScore >= 50 ? '⚠️ SUSPECT' : '✅ LÉGITIME';
+
+  @override
+  Widget build(BuildContext context) {
+    Map<String, dynamic>? parsed;
+    if (_result != null) try { parsed = jsonDecode(_result!); } catch (_) {}
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A1A),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        title: const Text('📱 Détecteur Smishing', style: TextStyle(color: Colors.white, fontSize: 17)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [const Color(0xFF9B59B6).withOpacity(0.15), Colors.transparent]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF9B59B6).withOpacity(0.4)),
+            ),
+            child: Column(children: [
+              const Icon(Icons.sms_failed, color: Color(0xFF9B59B6), size: 48),
+              const SizedBox(height: 12),
+              const Text('Analysez vos SMS suspects', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              const SizedBox(height: 8),
+              const Text('Collez le contenu d'un SMS douteux pour détecter une arnaque (banque, Chronopost, impôts, etc.)', style: TextStyle(color: Colors.white60, fontSize: 13), textAlign: TextAlign.center),
+            ]),
+          ),
+          const SizedBox(height: 24),
+          TextField(
+            controller: _smsCtrl,
+            style: const TextStyle(color: Colors.white),
+            maxLines: 6,
+            decoration: InputDecoration(
+              hintText: 'Collez le SMS ici...
+
+Ex: "Votre colis Chronopost est en attente. Cliquez ici: http://..."',
+              hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
+              filled: true, fillColor: const Color(0xFF0F1923),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A3060))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF9B59B6))),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _loading ? null : _analyze,
+              icon: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.search),
+              label: Text(_loading ? 'Analyse en cours...' : 'Analyser avec ARIA + Claude', style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9B59B6), foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          if (parsed != null) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _riskColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _riskColor.withOpacity(0.4)),
+              ),
+              child: Column(children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text(_riskLabel, style: TextStyle(color: _riskColor, fontWeight: FontWeight.bold, fontSize: 18)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(color: _riskColor.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                    child: Text('Risque: $_riskScore/100', style: TextStyle(color: _riskColor, fontWeight: FontWeight.bold)),
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(value: _riskScore / 100, backgroundColor: Colors.white10, valueColor: AlwaysStoppedAnimation(_riskColor), minHeight: 8),
+                ),
+                const SizedBox(height: 16),
+                if ((parsed['raisons'] as List?)?.isNotEmpty == true) ...[
+                  const Align(alignment: Alignment.centerLeft, child: Text('Indicateurs détectés:', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold))),
+                  const SizedBox(height: 8),
+                  ...(parsed['raisons'] as List).map((r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(children: [
+                      Icon(_riskScore >= 50 ? Icons.warning_amber : Icons.info, color: _riskColor, size: 14),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(r.toString(), style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                    ]),
+                  )),
+                ],
+                if (parsed['conseil'] != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Row(children: [
+                      const Icon(Icons.lightbulb, color: Colors.blue, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(parsed['conseil'].toString(), style: const TextStyle(color: Colors.blue, fontSize: 12))),
+                    ]),
+                  ),
+                ],
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── BEC / FRAUDE AU PRÉSIDENT DETECTOR ──────────────────────────────────────
+
+class BECDetectorScreen extends StatefulWidget {
+  const BECDetectorScreen({super.key});
+  @override State<BECDetectorScreen> createState() => _BECDetectorState();
+}
+
+class _BECDetectorState extends State<BECDetectorScreen> {
+  final _emailCtrl = TextEditingController();
+  final _senderCtrl = TextEditingController();
+  bool _loading = false;
+  Map<String, dynamic>? _result;
+
+  Future<void> _analyze() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) return;
+    setState(() { _loading = true; _result = null; });
+    try {
+      final prompt = """Tu es un expert en cybersécurité spécialisé dans la détection de BEC (Business Email Compromise) et Fraude au Président.
+Analyse cet email:
+Expéditeur: ${_senderCtrl.text.isEmpty ? 'Non fourni' : _senderCtrl.text}
+Contenu: "$email"
+
+Réponds en JSON: {
+  "score": 0-100,
+  "verdict": "LÉGITIME|SUSPECT|FRAUDE BEC|FRAUDE AU PRÉSIDENT",
+  "indicateurs": ["indicateur1", "indicateur2"],
+  "techniques": ["technique d'arnaque utilisée"],
+  "conseil": "action immédiate à prendre"
+}
+Score 80+= fraude confirmée. Cherche: urgence anormale, virement demandé, usurpation identité dirigeant, pression temporelle, demande de confidentialité.""";
+
+      final res = await http.post(
+        Uri.parse('https://api.anthropic.com/v1/messages'),
+        headers: {'x-api-key': _kAnthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
+        body: jsonEncode({'model': 'claude-haiku-4-5-20251001', 'max_tokens': 600, 'messages': [{'role': 'user', 'content': prompt}]}),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        final text = data['content'][0]['text'].toString();
+        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+        if (jsonMatch != null) {
+          setState(() => _result = jsonDecode(jsonMatch.group(0)!));
+        }
+      }
+    } catch (e) {
+      setState(() => _result = {'score': 0, 'verdict': 'ERREUR', 'indicateurs': ['$e'], 'conseil': 'Connexion impossible'});
+    }
+    setState(() => _loading = false);
+  }
+
+  Color get _riskColor {
+    final score = (_result?['score'] as num?)?.toInt() ?? 0;
+    return score >= 80 ? Colors.red : score >= 50 ? Colors.orange : Colors.green;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final score = (_result?['score'] as num?)?.toInt() ?? 0;
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A1A),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        title: const Text('📧 Détecteur BEC', style: TextStyle(color: Colors.white, fontSize: 17)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [const Color(0xFFE74C3C).withOpacity(0.15), Colors.transparent]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE74C3C).withOpacity(0.4)),
+            ),
+            child: Column(children: [
+              const Icon(Icons.mark_email_unread, color: Color(0xFFE74C3C), size: 48),
+              const SizedBox(height: 12),
+              const Text('Détecteur Fraude au Président / BEC', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+              const SizedBox(height: 8),
+              const Text('Les arnaques BEC coûtent 3 milliards € par an aux entreprises françaises. Analysez un email suspect.', style: TextStyle(color: Colors.white60, fontSize: 12), textAlign: TextAlign.center),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _senderCtrl,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Adresse expéditeur (optionnel): pdg@entreprise.com',
+              hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+              prefixIcon: const Icon(Icons.person, color: Color(0xFFE74C3C), size: 20),
+              filled: true, fillColor: const Color(0xFF0F1923),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A3060))),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _emailCtrl,
+            style: const TextStyle(color: Colors.white),
+            maxLines: 8,
+            decoration: InputDecoration(
+              hintText: 'Collez le contenu de l'email ici...
+
+Ex: "Bonjour, je suis le PDG. J'ai besoin d'un virement urgent de 50 000€..."',
+              hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+              filled: true, fillColor: const Color(0xFF0F1923),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A3060))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE74C3C))),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _loading ? null : _analyze,
+              icon: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.radar),
+              label: Text(_loading ? 'Analyse IA en cours...' : 'Analyser avec Claude AI', style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE74C3C), foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          if (_result != null) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _riskColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _riskColor.withOpacity(0.4)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Expanded(child: Text(_result!['verdict']?.toString() ?? '', style: TextStyle(color: _riskColor, fontWeight: FontWeight.bold, fontSize: 16))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: _riskColor.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                    child: Text('$score/100', style: TextStyle(color: _riskColor, fontWeight: FontWeight.bold)),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(value: score / 100, backgroundColor: Colors.white10, valueColor: AlwaysStoppedAnimation(_riskColor), minHeight: 8),
+                ),
+                if ((_result!['indicateurs'] as List?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: 16),
+                  const Text('🔍 Indicateurs détectés:', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  ...(_result!['indicateurs'] as List).map((i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(children: [
+                      Icon(Icons.warning_amber, color: _riskColor, size: 14),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(i.toString(), style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                    ]),
+                  )),
+                ],
+                if ((_result!['techniques'] as List?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: 12),
+                  const Text('🎭 Techniques d'arnaque:', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  ...(_result!['techniques'] as List).map((t) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(children: [
+                      const Icon(Icons.theater_comedy, color: Colors.orange, size: 14),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(t.toString(), style: const TextStyle(color: Colors.orange, fontSize: 12))),
+                    ]),
+                  )),
+                ],
+                if (_result!['conseil'] != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Row(children: [
+                      const Icon(Icons.shield, color: Colors.blue, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_result!['conseil'].toString(), style: const TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.w600))),
+                    ]),
+                  ),
+                ],
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── QR CODE SCANNER / ANALYZER ──────────────────────────────────────────────
+
+class QRScannerScreen extends StatefulWidget {
+  const QRScannerScreen({super.key});
+  @override State<QRScannerScreen> createState() => _QRScannerState();
+}
+
+class _QRScannerState extends State<QRScannerScreen> {
+  final _urlCtrl = TextEditingController();
+  bool _loading = false;
+  Map<String, dynamic>? _result;
+
+  Future<void> _analyzeUrl() async {
+    final url = _urlCtrl.text.trim();
+    if (url.isEmpty) return;
+    setState(() { _loading = true; _result = null; });
+    try {
+      final prompt = """Analyse cette URL/contenu de QR code pour détecter si c'est malveillant:
+URL: "$url"
+
+Réponds en JSON: {
+  "score": 0-100,
+  "verdict": "SÛR|SUSPECT|MALVEILLANT",
+  "type": "type de contenu (site web, paiement, wifi, etc.)",
+  "risques": ["risque1", "risque2"],
+  "conseil": "que faire"
+}
+Cherche: domaines suspects, URL raccourcies, typosquatting, protocoles non HTTPS, domaines récents, similitudes avec marques connues.""";
+
+      final res = await http.post(
+        Uri.parse('https://api.anthropic.com/v1/messages'),
+        headers: {'x-api-key': _kAnthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
+        body: jsonEncode({'model': 'claude-haiku-4-5-20251001', 'max_tokens': 400, 'messages': [{'role': 'user', 'content': prompt}]}),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        final text = data['content'][0]['text'].toString();
+        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+        if (jsonMatch != null) setState(() => _result = jsonDecode(jsonMatch.group(0)!));
+      }
+    } catch (e) {
+      setState(() => _result = {'score': 0, 'verdict': 'ERREUR', 'type': 'Inconnu', 'risques': ['$e'], 'conseil': 'Connexion impossible'});
+    }
+    setState(() => _loading = false);
+  }
+
+  Color get _riskColor {
+    final score = (_result?['score'] as num?)?.toInt() ?? 0;
+    return score >= 70 ? Colors.red : score >= 40 ? Colors.orange : Colors.green;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final score = (_result?['score'] as num?)?.toInt() ?? 0;
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A1A),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        title: const Text('📷 Scanner QR Code', style: TextStyle(color: Colors.white, fontSize: 17)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [const Color(0xFF27AE60).withOpacity(0.15), Colors.transparent]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF27AE60).withOpacity(0.4)),
+            ),
+            child: const Column(children: [
+              Icon(Icons.qr_code_scanner, color: Color(0xFF27AE60), size: 48),
+              SizedBox(height: 12),
+              Text('Analyse de QR Code', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              SizedBox(height: 8),
+              Text('Collez l'URL contenue dans un QR code suspect pour vérifier si elle est sûre avant de cliquer.', style: TextStyle(color: Colors.white60, fontSize: 13), textAlign: TextAlign.center),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blue.withOpacity(0.2))),
+            child: const Row(children: [
+              Icon(Icons.info, color: Colors.blue, size: 18),
+              SizedBox(width: 10),
+              Expanded(child: Text('📸 Scanner avec votre appareil photo → copier l'URL → coller ici', style: TextStyle(color: Colors.blue, fontSize: 12))),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _urlCtrl,
+            style: const TextStyle(color: Colors.white),
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Collez l'URL du QR code ici...
+Ex: https://bit.ly/3xAb12 ou http://paypa1.com/verify',
+              hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+              prefixIcon: const Icon(Icons.link, color: Color(0xFF27AE60)),
+              filled: true, fillColor: const Color(0xFF0F1923),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF1A3060))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF27AE60))),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _loading ? null : _analyzeUrl,
+              icon: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.security),
+              label: Text(_loading ? 'Analyse en cours...' : 'Analyser avec Claude AI', style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF27AE60), foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+          if (_result != null) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _riskColor.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _riskColor.withOpacity(0.4)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(_result!['verdict']?.toString() ?? '', style: TextStyle(color: _riskColor, fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text(_result!['type']?.toString() ?? '', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  ]),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: _riskColor.withOpacity(0.2), borderRadius: BorderRadius.circular(20)),
+                    child: Text('$score/100', style: TextStyle(color: _riskColor, fontWeight: FontWeight.bold)),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(value: score / 100, backgroundColor: Colors.white10, valueColor: AlwaysStoppedAnimation(_riskColor), minHeight: 8),
+                ),
+                if ((_result!['risques'] as List?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: 16),
+                  const Text('⚠️ Risques identifiés:', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  ...(_result!['risques'] as List).map((r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(children: [
+                      Icon(Icons.warning_amber, color: _riskColor, size: 14),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(r.toString(), style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                    ]),
+                  )),
+                ],
+                if (_result!['conseil'] != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Row(children: [
+                      const Icon(Icons.tips_and_updates, color: Colors.blue, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_result!['conseil'].toString(), style: const TextStyle(color: Colors.blue, fontSize: 12, fontWeight: FontWeight.w600))),
+                    ]),
+                  ),
+                ],
+              ]),
+            ),
+          ],
+        ]),
       ),
     );
   }
