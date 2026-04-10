@@ -1557,7 +1557,7 @@ class SecurityState {
     if (alerts.length > 30) alerts.removeLast();
     notify();
     // ARIA neutralise automatiquement TOUTES les menaces critiques (sans parler)
-    if (a.level == 'danger' && _kOpenAiKey.isNotEmpty) {
+    if (a.level == 'danger' && _kAnthropicKey.isNotEmpty) {
       Future.microtask(() => _aria?.autoNeutralize(a));
     }
     // Enregistrer comme preuve numérique légale (Firebase)
@@ -1939,7 +1939,7 @@ class VoiceAIService {
   // speak() fire responseListeners au moment précis où l'audio démarre
   // → texte et voix parfaitement synchronisés comme Gemini/GPT
   Future<void> speak(String text) async {
-    if (_kOpenAiKey.isNotEmpty) {
+    if (_kAnthropicKey.isNotEmpty) {
       await _speakOpenAI(text);
     } else {
       // Fallback navigateur : afficher le texte immédiatement
@@ -1968,7 +1968,7 @@ class VoiceAIService {
         player.onPlayerComplete.listen((_) {
           _isSpeaking = false;
           for (var l in speakingListeners) l(false);
-          if (_conversationMode && _kOpenAiKey.isNotEmpty) {
+          if (_conversationMode && _kAnthropicKey.isNotEmpty) {
             Future.delayed(const Duration(milliseconds: 600), startListening);
           }
         });
@@ -2093,7 +2093,7 @@ RÈGLE : Réponds en 2-3 phrases max. Parle au présent, sois précis sur les ac
         },
         body: jsonEncode({
           'model': 'claude-haiku-4-5-20251001',
-          'max_tokens': 150,
+          'max_tokens': 500,
           'system': systemPrompt,
           'messages': [
             {'role': 'user', 'content': userMessage},
@@ -2163,7 +2163,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     final prefs = await SharedPreferences.getInstance();
     final savedKey = prefs.getString('openai_api_key') ?? '';
     if (savedKey.startsWith('sk-') && savedKey.length > 20) {
-      _kOpenAiKey = savedKey;
+      _kAnthropicKey = savedKey;
     }
     // Clé Anthropic Claude
     final anthropicKey = prefs.getString('anthropic_api_key') ?? '';
@@ -2913,7 +2913,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   // Modules de protection
                   const Text('MODULES ACTIFS', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
-                  _moduleCard('IA ARIA', 'Agent vocal autonome actif', Icons.smart_toy, const Color(0xFF4A9EFF), _kOpenAiKey.isNotEmpty),
+                  _moduleCard('IA ARIA', 'Agent vocal autonome actif', Icons.smart_toy, const Color(0xFF4A9EFF), _kAnthropicKey.isNotEmpty),
                   const SizedBox(height: 8),
                   _moduleCard('Protection réseau', 'Surveillance WiFi & connexions', Icons.wifi_protected_setup, Colors.blue, true),
                   const SizedBox(height: 8),
@@ -3453,7 +3453,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with TickerProviderStateMixin 
     if (pending.isNotEmpty) {
       VoiceAIService.pendingMessage = '';
       if (mounted) setState(() => _text = pending);
-      if (_kOpenAiKey.isNotEmpty) {
+      if (_kAnthropicKey.isNotEmpty) {
         await Future.delayed(const Duration(milliseconds: 400));
         _voice.sendText(pending);
       } else {
@@ -3461,7 +3461,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with TickerProviderStateMixin 
       }
       return;
     }
-    if (_kOpenAiKey.isEmpty) {
+    if (_kAnthropicKey.isEmpty) {
       _startTypewriter('Configurez votre clé API dans Réglages pour activer ARIA.');
     } else {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -3539,13 +3539,13 @@ class _VoiceSheetState extends State<_VoiceSheet> with TickerProviderStateMixin 
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(children: [
-                Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: _kOpenAiKey.isNotEmpty ? Colors.blue : Colors.red,
-                  boxShadow: [BoxShadow(color: (_kOpenAiKey.isNotEmpty ? Colors.blue : Colors.red).withOpacity(0.5), blurRadius: 6)])),
+                Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: _kAnthropicKey.isNotEmpty ? Colors.blue : Colors.red,
+                  boxShadow: [BoxShadow(color: (_kAnthropicKey.isNotEmpty ? Colors.blue : Colors.red).withOpacity(0.5), blurRadius: 6)])),
                 const SizedBox(width: 8),
                 Text('ARIA', style: TextStyle(color: micColor, fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 2)),
                 const SizedBox(width: 8),
                 Text(
-                  _isListening ? '• ÉCOUTE' : _isSpeaking ? '• PARLE' : _kOpenAiKey.isEmpty ? '• HORS LIGNE' : '• EN VEILLE',
+                  _isListening ? '• ÉCOUTE' : _isSpeaking ? '• PARLE' : _kAnthropicKey.isEmpty ? '• HORS LIGNE' : '• EN VEILLE',
                   style: TextStyle(color: micColor.withOpacity(0.7), fontSize: 11, letterSpacing: 1),
                 ),
               ]),
@@ -3564,7 +3564,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with TickerProviderStateMixin 
             builder: (_, child) => Transform.scale(scale: _pulse.value, child: child),
             child: GestureDetector(
               onTap: () async {
-                if (_kOpenAiKey.isEmpty) return;
+                if (_kAnthropicKey.isEmpty) return;
                 if (_isListening) { await _voice.stopListening(); } else { await _startListen(); }
               },
               child: Stack(
@@ -3595,7 +3595,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with TickerProviderStateMixin 
           ),
           const SizedBox(height: 12),
           Text(
-            _isListening ? 'Je vous écoute... parlez !' : _isSpeaking ? 'ARIA répond...' : _kOpenAiKey.isEmpty ? 'Configurez la clé API dans Réglages' : 'Touchez pour parler',
+            _isListening ? 'Je vous écoute... parlez !' : _isSpeaking ? 'ARIA répond...' : _kAnthropicKey.isEmpty ? 'Configurez la clé API dans Réglages' : 'Touchez pour parler',
             style: TextStyle(color: micColor.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
@@ -3673,7 +3673,7 @@ class _VoiceSheetState extends State<_VoiceSheet> with TickerProviderStateMixin 
             ),
           ],
           const SizedBox(height: 8),
-          if (_kOpenAiKey.isNotEmpty)
+          if (_kAnthropicKey.isNotEmpty)
             const Text('ARIA réécoute automatiquement après chaque réponse', style: TextStyle(color: Colors.grey, fontSize: 10), textAlign: TextAlign.center),
         ],
       ),
@@ -3715,9 +3715,11 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
 
   Future<void> _loadSavedKey() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedKey = prefs.getString('openai_api_key') ?? '';
-    if (savedKey.startsWith('sk-') && savedKey.length > 20 && mounted) {
-      setState(() { _kOpenAiKey = savedKey; _apiKeySet = true; });
+    final savedKey = prefs.getString('anthropic_api_key') ?? '';
+    if (savedKey.startsWith('sk-ant-') && savedKey.length > 20 && mounted) {
+      setState(() { _kAnthropicKey = savedKey; _apiKeySet = true; });
+    } else if (_kAnthropicKey.isNotEmpty && mounted) {
+      setState(() { _apiKeySet = true; });
     }
   }
 
@@ -3804,24 +3806,24 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _apiKeySet ? Colors.blue.withOpacity(0.08) : Colors.orange.withOpacity(0.08),
+                  color: _kAnthropicKey.isNotEmpty ? Colors.blue.withOpacity(0.08) : Colors.orange.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: _apiKeySet ? Colors.blue.withOpacity(0.4) : Colors.orange.withOpacity(0.4)),
+                  border: Border.all(color: _kAnthropicKey.isNotEmpty ? Colors.blue.withOpacity(0.4) : Colors.orange.withOpacity(0.4)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(_apiKeySet ? Icons.lock : Icons.key, color: _apiKeySet ? Colors.blue : Colors.orange, size: 18),
+                        Icon(_kAnthropicKey.isNotEmpty ? Icons.lock : Icons.key, color: _kAnthropicKey.isNotEmpty ? Colors.blue : Colors.orange, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          _apiKeySet ? 'IA activée — Clé OpenAI configurée ✓' : 'Entrez votre clé API OpenAI',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _apiKeySet ? Colors.blue : Colors.orange),
+                          _kAnthropicKey.isNotEmpty ? 'IA activée — Clé Claude configurée ✓' : 'Configurez la clé API',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: _kAnthropicKey.isNotEmpty ? Colors.blue : Colors.orange),
                         ),
                       ],
                     ),
-                    if (!_apiKeySet) ...[
+                    if (_kAnthropicKey.isEmpty) ...[
                       const SizedBox(height: 10),
                       TextField(
                         controller: _apiKeyController,
@@ -3847,7 +3849,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
                             if (key.startsWith('sk-') && key.length > 20) {
                               final prefs = await SharedPreferences.getInstance();
                               await prefs.setString('openai_api_key', key);
-                              setState(() { _kOpenAiKey = key; _apiKeySet = true; });
+                              setState(() { _kAnthropicKey = key; _apiKeySet = true; });
                               _voice.speak('Intelligence artificielle activée. Je suis ARIA, votre assistante CyberGuard. Comment puis-je vous aider ?');
                             }
                           },
@@ -3862,7 +3864,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
                         onPressed: () async {
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.remove('openai_api_key');
-                          setState(() { _apiKeySet = false; _kOpenAiKey = ''; _apiKeyController.clear(); });
+                          setState(() { _apiKeySet = false; _kAnthropicKey = ''; _apiKeyController.clear(); });
                         },
                         icon: const Icon(Icons.edit, size: 14, color: Colors.grey),
                         label: const Text('Modifier la clé', style: TextStyle(color: Colors.grey, fontSize: 12)),
@@ -7841,8 +7843,7 @@ class SocialSecurityScreen extends StatelessWidget {
         'Activer le code PIN Signal (Note de sécurité)',
         'Utiliser la fonction "Disparition des messages" par défaut',
         'Activer le verrouillage de l\'écran dans Signal',
-        'Vérifier le code de sécurité avec vos contacts importants',
-        'Recommandé par Edward Snowden, l\'EFF et les journalistes d\'investigation',
+        'Vérifier le code de sécurité avec votre contact (Profil → Numéro de sécurité)',
       ],
     },
   ];
@@ -7850,167 +7851,77 @@ class SocialSecurityScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF0A0A1A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF060610).withOpacity(0.9),
-        title: const Text('Sécurité Réseaux Sociaux'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Sécurité Réseaux Sociaux', style: TextStyle(color: Colors.white)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.cyanAccent),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ListView(
+      body: ListView.builder(
         padding: const EdgeInsets.all(16),
+        itemCount: _platforms.length,
+        itemBuilder: (context, index) {
+          final p = _platforms[index];
+          return _platformCard(context, p);
+        },
+      ),
+    );
+  }
+
+  Widget _platformCard(BuildContext context, Map<String, dynamic> p) {
+    final color = Color(p['color'] as int);
+    final levelColor = Color(p['levelColor'] as int);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1923),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: ExpansionTile(
+        leading: Text(p['icon'] as String, style: const TextStyle(fontSize: 28)),
+        title: Text(p['name'] as String, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text(p['encryption'] as String, style: const TextStyle(color: Colors.white38, fontSize: 10), maxLines: 2),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(color: levelColor.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+          child: Text(p['level'] as String, style: TextStyle(color: levelColor, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(14),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.withOpacity(0.3)),
-            ),
-            child: const Row(
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                SizedBox(width: 10),
-                Expanded(child: Text(
-                  'Une intégration complète de WhatsApp/Instagram n\'est pas possible '
-                  'sans violer leurs conditions d\'utilisation. Voici à la place un guide '
-                  'complet pour sécuriser chaque plateforme, et notre recommandation pour '
-                  'une communication vraiment confidentielle.',
-                  style: TextStyle(color: Colors.white60, fontSize: 12, height: 1.5),
+                const Text('⚠️ Risques', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                ...(p['risks'] as List).map((r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(children: [
+                    const Icon(Icons.warning_amber, color: Colors.orange, size: 14),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(r as String, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.4))),
+                  ]),
+                )),
+                const SizedBox(height: 12),
+                const Text('✅ Conseils', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                ...(p['tips'] as List).map((t) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(children: [
+                    const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(t as String, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.4))),
+                  ]),
                 )),
               ],
             ),
           ),
-
-          // Recommandation Signal
-          GestureDetector(
-            onTap: () => openUrl('https://signal.org/fr/'),
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFF3A76F0).withOpacity(0.2), const Color(0xFF00E676).withOpacity(0.08)],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF00E676).withOpacity(0.5), width: 1.5),
-              ),
-              child: const Row(
-                children: [
-                  Text('🔒', style: TextStyle(fontSize: 32)),
-                  SizedBox(width: 14),
-                  Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Notre recommandation : Signal',
-                        style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 15)),
-                      SizedBox(height: 4),
-                      Text('Application 100% gratuite, open-source, recommandée par les experts en sécurité du monde entier pour des communications vraiment privées.',
-                        style: TextStyle(color: Colors.white60, fontSize: 11, height: 1.4)),
-                      SizedBox(height: 8),
-                      Text('Télécharger Signal →', style: TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 12)),
-                    ],
-                  )),
-                ],
-              ),
-            ),
-          ),
-
-          // Cards par plateforme
-          ..._platforms.map((p) => _PlatformCard(platform: p)),
-
-          const SizedBox(height: 32),
         ],
-      ),
-    );
-  }
-}
-
-class _PlatformCard extends StatefulWidget {
-  final Map<String, dynamic> platform;
-  const _PlatformCard({required this.platform});
-  @override
-  State<_PlatformCard> createState() => _PlatformCardState();
-}
-
-class _PlatformCardState extends State<_PlatformCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = widget.platform;
-    final color = Color(p['color'] as int);
-    final levelColor = Color(p['levelColor'] as int);
-    final risks = (p['risks'] as List).cast<String>();
-    final tips = (p['tips'] as List).cast<String>();
-
-    return GestureDetector(
-      onTap: () => setState(() => _expanded = !_expanded),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(0.35)),
-        ),
-        child: Column(children: [
-          // En-tête
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(children: [
-              Text(p['icon'] as String, style: const TextStyle(fontSize: 28)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(p['name'] as String, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 3),
-                Text(p['encryption'] as String, style: const TextStyle(color: Colors.white38, fontSize: 10), maxLines: 2),
-              ])),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: levelColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: levelColor.withOpacity(0.5)),
-                ),
-                child: Text(p['level'] as String, style: TextStyle(color: levelColor, fontSize: 11, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 8),
-              Icon(_expanded ? Icons.expand_less : Icons.expand_more, color: Colors.white38),
-            ]),
-          ),
-          // Détails expansibles
-          if (_expanded) Container(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Divider(color: Colors.white12),
-              const SizedBox(height: 8),
-              const Text('⚠ Risques', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
-              const SizedBox(height: 6),
-              ...risks.map((r) => Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('• ', style: TextStyle(color: Colors.orange, fontSize: 11)),
-                  Expanded(child: Text(r, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.4))),
-                ]),
-              )),
-              const SizedBox(height: 10),
-              const Text('✅ Conseils de sécurité', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
-              const SizedBox(height: 6),
-              ...tips.map((t) => Padding(
-                padding: const EdgeInsets.only(bottom: 5),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('• ', style: TextStyle(color: Color(0xFF4A9EFF), fontSize: 11)),
-                  Expanded(child: Text(t, style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.4))),
-                ]),
-              )),
-            ]),
-          ),
-        ]),
       ),
     );
   }
