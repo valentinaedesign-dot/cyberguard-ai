@@ -5859,7 +5859,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     style: TextStyle(color: Colors.white38, fontSize: 11)),
                   const SizedBox(height: 14),
                   // Story cards
-                  _storyCard('🎯 L\'Attaque (2023)',
+                  _storyCard('🎯 L\'Attaque (Août 2024)',
                     'Valentin Halfon découvre qu\'il est la cible d\'une cyberattaque '
                     'sophistiquée depuis des mois. Sa box internet compromise. Son smartphone '
                     'infecté par un logiciel espion. Ses boîtes mail piratées. Des algorithmes '
@@ -5915,7 +5915,7 @@ class _AboutScreenState extends State<AboutScreen> {
                           style: TextStyle(color: Color(0xFFFF6600), fontSize: 10)),
                         const SizedBox(height: 6),
                         const Text(
-                          'Entrepreneur en série, Valentin a vécu en 2023 une cyberattaque '
+                          'Entrepreneur en série, Valentin a vécu en août 2024 une cyberattaque '
                           'multi-vecteurs : box internet, smartphone, emails, machine learning. '
                           'Son combat est devenu sa mission : rendre la protection numérique '
                           'accessible à tous, partout.',
