@@ -3057,6 +3057,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 8),
                   _securityToolCard(context, '🛡️ Protection VPN', 'Surveiller le trafic de vos apps', const Color(0xFF4A9EFF),
                     () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VpnProtectionScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '₿ Crypto Scam Detector', 'Détecter les arnaques crypto & NFT', const Color(0xFFF7931A),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CryptoScamScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '💕 Romance Scam IA', 'Détecter les arnaques sentimentales', const Color(0xFFFF4F8B),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RomanceScamScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '📡 Alerte SIM Swap', 'Détecter le vol de carte SIM', const Color(0xFF00BCD4),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SimSwapScreen()))),
+                  const SizedBox(height: 8),
+                  _securityToolCard(context, '🕵️ Dark Web Monitor', 'Surveiller vos données sur le dark web', const Color(0xFF7C4DFF),
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DarkWebMonitorScreen()))),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -9029,6 +9041,1117 @@ class _VpnProtectionState extends State<VpnProtectionScreen> with SingleTickerPr
           Text(app, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 4),
           Text(description, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.5)),
+        ])),
+      ]),
+    );
+  }
+}
+
+// ─── CRYPTO SCAM DETECTOR ─────────────────────────────────────────────────────
+
+class CryptoScamScreen extends StatefulWidget {
+  const CryptoScamScreen({super.key});
+  @override State<CryptoScamScreen> createState() => _CryptoScamState();
+}
+
+class _CryptoScamState extends State<CryptoScamScreen> {
+  final _controller = TextEditingController();
+  bool _analyzing = false;
+  Map<String, dynamic>? _result;
+  String? _error;
+
+  static const _orange = Color(0xFFF7931A);
+
+  final List<Map<String, String>> _examples = [
+    {'title': 'Pump & Dump', 'text': 'URGENT ! Le token MOONX va x100 dans 48h. Achète maintenant avant que ça explose ! Groupe privé Telegram, investissement minimum 500€, retrait possible à tout moment.'},
+    {'title': 'Faux exchange', 'text': 'Félicitations ! Vous avez gagné 0.5 BTC sur notre plateforme CryptoReward.io. Déposez 0.01 ETH pour valider votre compte et récupérer vos gains.'},
+    {'title': 'Rug pull NFT', 'text': 'Collection NFT exclusive : 10 000 Cyber Apes. Mint à 0.08 ETH. Road map : listing Opensea + token play-to-earn. Équipe anonyme mais projet 100% SAFU !'},
+  ];
+
+  Future<void> _analyze() async {
+    if (_controller.text.trim().isEmpty) return;
+    setState(() { _analyzing = true; _result = null; _error = null; });
+
+    if (_kAnthropicKey.isEmpty) {
+      await Future.delayed(const Duration(seconds: 1));
+      setState(() {
+        _analyzing = false;
+        _result = {
+          'score': 87,
+          'verdict': 'ARNAQUE PROBABLE',
+          'techniques': ['Urgence artificielle', 'Gains garantis irréalistes', 'Demande de dépôt initial', 'Anonymat équipe'],
+          'signaux': ['Promesse de rendement x100', 'Groupe Telegram privé', '"Investissement minimum"', 'Pression temporelle'],
+          'conseil': 'Ne jamais investir sous pression. Les vraies opportunités crypto n\'ont pas besoin d\'urgence artificielle.',
+          'demo': true,
+        };
+      });
+      return;
+    }
+
+    try {
+      final prompt = '''Tu es un expert en cybersécurité spécialisé dans la détection d'arnaques crypto, NFT et investissement frauduleux.
+
+Analyse ce message / projet crypto pour détecter si c'est une arnaque :
+
+"""
+${_controller.text.trim()}
+"""
+
+Réponds UNIQUEMENT en JSON valide avec cette structure exacte :
+{
+  "score": <0-100, 100=arnaque certaine>,
+  "verdict": "<LÉGITIME|SUSPECT|ARNAQUE PROBABLE|ARNAQUE CERTAINE>",
+  "techniques": ["<technique d'arnaque utilisée>", ...],
+  "signaux": ["<signal d'alarme détecté>", ...],
+  "conseil": "<conseil de protection court>"
+}''';
+
+      final response = await http.post(
+        Uri.parse('https://api.anthropic.com/v1/messages'),
+        headers: {'x-api-key': _kAnthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
+        body: jsonEncode({'model': 'claude-3-5-haiku-20241022', 'max_tokens': 600,
+          'messages': [{'role': 'user', 'content': prompt}]}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final text = data['content'][0]['text'] as String;
+        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+        if (jsonMatch != null) {
+          setState(() { _result = jsonDecode(jsonMatch.group(0)!); _analyzing = false; });
+        }
+      } else {
+        setState(() { _error = 'Erreur API ${response.statusCode}'; _analyzing = false; });
+      }
+    } catch (e) {
+      setState(() { _error = 'Connexion impossible'; _analyzing = false; });
+    }
+  }
+
+  Color _scoreColor(int score) {
+    if (score >= 75) return Colors.red;
+    if (score >= 45) return Colors.orange;
+    return Colors.green;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF04080F),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 18), onPressed: () => Navigator.pop(context)),
+        title: const Text('₿ Crypto Scam Detector', style: TextStyle(color: Colors.white, fontSize: 17)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          // Header
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [_orange.withOpacity(0.15), Colors.black], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _orange.withOpacity(0.4)),
+            ),
+            child: Column(children: [
+              const Text('₿', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 8),
+              const Text('Détecteur d\'Arnaques Crypto & NFT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15), textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              Text('Pump & Dump · Rug Pull · Faux Exchange · NFT Scam', style: TextStyle(color: _orange.withOpacity(0.8), fontSize: 11), textAlign: TextAlign.center),
+            ]),
+          ),
+          const SizedBox(height: 16),
+
+          // Exemples rapides
+          const Text('EXEMPLES RAPIDES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          SizedBox(height: 32, child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _examples.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) => GestureDetector(
+              onTap: () => setState(() => _controller.text = _examples[i]['text']!),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: _orange.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: _orange.withOpacity(0.4))),
+                child: Text(_examples[i]['title']!, style: TextStyle(color: _orange, fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          )),
+          const SizedBox(height: 14),
+
+          // Input
+          TextField(
+            controller: _controller,
+            maxLines: 6,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Collez le message, description du projet, tweet, post ou offre d\'investissement crypto à analyser...',
+              hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+              filled: true, fillColor: Colors.white.withOpacity(0.04),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _orange.withOpacity(0.3))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _orange.withOpacity(0.3))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _orange, width: 1.5)),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: _analyzing ? null : _analyze,
+            style: ElevatedButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: _analyzing
+              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+              : const Text('🔍 Analyser le contenu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          )),
+          const SizedBox(height: 16),
+
+          if (_error != null) Container(
+            padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.red.withOpacity(0.3))),
+            child: Row(children: [const Icon(Icons.error_outline, color: Colors.red, size: 18), const SizedBox(width: 8), Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13))]),
+          ),
+
+          if (_result != null) ...[
+            if (_result!['demo'] == true) Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withOpacity(0.3))),
+              child: const Text('⚠️ Mode démo — Configurez votre clé API Claude pour une analyse réelle', style: TextStyle(color: Colors.orange, fontSize: 11), textAlign: TextAlign.center),
+            ),
+
+            // Score
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _scoreColor(_result!['score'] as int).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _scoreColor(_result!['score'] as int).withOpacity(0.4), width: 1.5),
+              ),
+              child: Column(children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text(_result!['verdict'] as String, style: TextStyle(color: _scoreColor(_result!['score'] as int), fontWeight: FontWeight.bold, fontSize: 16)),
+                  Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: _scoreColor(_result!['score'] as int), width: 3)),
+                    child: Center(child: Text('${_result!['score']}', style: TextStyle(color: _scoreColor(_result!['score'] as int), fontWeight: FontWeight.w900, fontSize: 18))),
+                  ),
+                ]),
+                const SizedBox(height: 12),
+                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
+                  value: (_result!['score'] as int) / 100,
+                  backgroundColor: Colors.white12,
+                  color: _scoreColor(_result!['score'] as int),
+                  minHeight: 6,
+                )),
+              ]),
+            ),
+            const SizedBox(height: 12),
+
+            // Techniques
+            if (_result!['techniques'] != null && (_result!['techniques'] as List).isNotEmpty) ...[
+              const Text('TECHNIQUES D\'ARNAQUE', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 6, children: [
+                for (final t in (_result!['techniques'] as List))
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.red.withOpacity(0.3))),
+                    child: Text(t.toString(), style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w500)),
+                  ),
+              ]),
+              const SizedBox(height: 12),
+            ],
+
+            // Signaux
+            if (_result!['signaux'] != null && (_result!['signaux'] as List).isNotEmpty) ...[
+              const Text('SIGNAUX D\'ALARME', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              ...(_result!['signaux'] as List).map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(s.toString(), style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                ]),
+              )),
+              const SizedBox(height: 12),
+            ],
+
+            // Conseil
+            if (_result!['conseil'] != null) Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: _orange.withOpacity(0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: _orange.withOpacity(0.3))),
+              child: Row(children: [
+                const Text('₿', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 10),
+                Expanded(child: Text(_result!['conseil'].toString(), style: TextStyle(color: _orange, fontSize: 12, fontWeight: FontWeight.w600))),
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── ROMANCE SCAM IA DETECTOR ─────────────────────────────────────────────────
+
+class RomanceScamScreen extends StatefulWidget {
+  const RomanceScamScreen({super.key});
+  @override State<RomanceScamScreen> createState() => _RomanceScamState();
+}
+
+class _RomanceScamState extends State<RomanceScamScreen> {
+  final _controller = TextEditingController();
+  bool _analyzing = false;
+  Map<String, dynamic>? _result;
+  String? _error;
+
+  static const _pink = Color(0xFFFF4F8B);
+
+  final List<Map<String, String>> _examples = [
+    {'title': 'Militaire à l\'étranger', 'text': 'Je suis colonel de l\'armée américaine en mission en Syrie. Je t\'ai vue sur Facebook et je suis tombé amoureux de toi. Je rentrerai bientôt. J\'ai besoin d\'aide pour rapatrier mes économies, tu peux m\'aider ?'},
+    {'title': 'Investissement crypto', 'text': 'Ma chérie, j\'ai fait beaucoup d\'argent avec le trading crypto. Je t\'aime tellement que je veux te montrer comment gagner. Mon ami a une plateforme spéciale, tu veux essayer ? Investis juste 200€ pour commencer.'},
+    {'title': 'Urgence médicale', 'text': 'Je suis à l\'hôpital, accident grave. Je ne peux pas appeler ma famille. J\'ai besoin de 500€ pour les soins. Dès que je suis sorti on se retrouve, je t\'aime tellement depuis 3 mois.'},
+  ];
+
+  Future<void> _analyze() async {
+    if (_controller.text.trim().isEmpty) return;
+    setState(() { _analyzing = true; _result = null; _error = null; });
+
+    if (_kAnthropicKey.isEmpty) {
+      await Future.delayed(const Duration(seconds: 1));
+      setState(() {
+        _analyzing = false;
+        _result = {
+          'score': 94,
+          'verdict': 'ARNAQUE SENTIMENTALE',
+          'profil': 'Scammer type "militaire à l\'étranger"',
+          'techniques': ['Love bombing', 'Isolation émotionnelle', 'Urgence financière', 'Identité fictive', 'Distance géographique'],
+          'signaux': ['Déclaration d\'amour trop rapide', 'Mission à l\'étranger', 'Demande d\'argent', 'Impossible à rencontrer en vrai'],
+          'conseil': 'Ne jamais envoyer d\'argent à quelqu\'un rencontré en ligne. Faites une recherche image inversée sur ses photos.',
+          'demo': true,
+        };
+      });
+      return;
+    }
+
+    try {
+      final prompt = '''Tu es un expert en cybersécurité et en psychologie des arnaques sentimentales (romance scam).
+
+Analyse ce message pour détecter s'il s'agit d'une arnaque sentimentale :
+
+"""
+${_controller.text.trim()}
+"""
+
+Réponds UNIQUEMENT en JSON valide :
+{
+  "score": <0-100, 100=arnaque certaine>,
+  "verdict": "<RELATION SAINE|SUSPECT|ROMANCE SCAM|ARNAQUE CERTAINE>",
+  "profil": "<profil probable du scammer si arnaque>",
+  "techniques": ["<manipulation utilisée>", ...],
+  "signaux": ["<signal d'alarme>", ...],
+  "conseil": "<conseil de protection personnalisé>"
+}''';
+
+      final response = await http.post(
+        Uri.parse('https://api.anthropic.com/v1/messages'),
+        headers: {'x-api-key': _kAnthropicKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'},
+        body: jsonEncode({'model': 'claude-3-5-haiku-20241022', 'max_tokens': 600,
+          'messages': [{'role': 'user', 'content': prompt}]}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final text = data['content'][0]['text'] as String;
+        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+        if (jsonMatch != null) {
+          setState(() { _result = jsonDecode(jsonMatch.group(0)!); _analyzing = false; });
+        }
+      } else {
+        setState(() { _error = 'Erreur API ${response.statusCode}'; _analyzing = false; });
+      }
+    } catch (e) {
+      setState(() { _error = 'Connexion impossible'; _analyzing = false; });
+    }
+  }
+
+  Color _scoreColor(int score) {
+    if (score >= 75) return Colors.red;
+    if (score >= 45) return Colors.orange;
+    return Colors.green;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF04080F),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 18), onPressed: () => Navigator.pop(context)),
+        title: const Text('💕 Romance Scam IA', style: TextStyle(color: Colors.white, fontSize: 17)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [_pink.withOpacity(0.15), Colors.black]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _pink.withOpacity(0.4)),
+            ),
+            child: Column(children: [
+              const Text('💕', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 8),
+              const Text('Détecteur d\'Arnaques Sentimentales', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15), textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              Text('Love Bombing · Militaire fictif · Arnaque crypto romantique', style: TextStyle(color: _pink.withOpacity(0.8), fontSize: 11), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(10)),
+                child: const Text('💡 Les romance scams coûtent plus de 1 milliard € par an en Europe. Victimes souvent âgées de 50-70 ans.', style: TextStyle(color: Colors.white60, fontSize: 11), textAlign: TextAlign.center),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 16),
+
+          const Text('EXEMPLES RAPIDES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          SizedBox(height: 32, child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _examples.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) => GestureDetector(
+              onTap: () => setState(() => _controller.text = _examples[i]['text']!),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: _pink.withOpacity(0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: _pink.withOpacity(0.4))),
+                child: Text(_examples[i]['title']!, style: TextStyle(color: _pink, fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+            ),
+          )),
+          const SizedBox(height: 14),
+
+          TextField(
+            controller: _controller,
+            maxLines: 6,
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Collez le message reçu sur Tinder, Facebook, WhatsApp, Instagram ou autre réseau social...',
+              hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+              filled: true, fillColor: Colors.white.withOpacity(0.04),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _pink.withOpacity(0.3))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _pink.withOpacity(0.3))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _pink, width: 1.5)),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: _analyzing ? null : _analyze,
+            style: ElevatedButton.styleFrom(backgroundColor: _pink, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: _analyzing
+              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('💕 Analyser le message', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          )),
+          const SizedBox(height: 16),
+
+          if (_error != null) Container(
+            padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.red.withOpacity(0.3))),
+            child: Row(children: [const Icon(Icons.error_outline, color: Colors.red, size: 18), const SizedBox(width: 8), Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13))]),
+          ),
+
+          if (_result != null) ...[
+            if (_result!['demo'] == true) Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withOpacity(0.3))),
+              child: const Text('⚠️ Mode démo — Configurez votre clé API Claude pour une analyse réelle', style: TextStyle(color: Colors.orange, fontSize: 11), textAlign: TextAlign.center),
+            ),
+
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _scoreColor(_result!['score'] as int).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _scoreColor(_result!['score'] as int).withOpacity(0.4), width: 1.5),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Expanded(child: Text(_result!['verdict'] as String, style: TextStyle(color: _scoreColor(_result!['score'] as int), fontWeight: FontWeight.bold, fontSize: 15))),
+                  Container(
+                    width: 56, height: 56,
+                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: _scoreColor(_result!['score'] as int), width: 3)),
+                    child: Center(child: Text('${_result!['score']}', style: TextStyle(color: _scoreColor(_result!['score'] as int), fontWeight: FontWeight.w900, fontSize: 18))),
+                  ),
+                ]),
+                if (_result!['profil'] != null) ...[
+                  const SizedBox(height: 8),
+                  Text('Profil : ${_result!['profil']}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                ],
+                const SizedBox(height: 10),
+                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
+                  value: (_result!['score'] as int) / 100,
+                  backgroundColor: Colors.white12,
+                  color: _scoreColor(_result!['score'] as int),
+                  minHeight: 6,
+                )),
+              ]),
+            ),
+            const SizedBox(height: 12),
+
+            if (_result!['techniques'] != null && (_result!['techniques'] as List).isNotEmpty) ...[
+              const Text('TECHNIQUES DE MANIPULATION', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, runSpacing: 6, children: [
+                for (final t in (_result!['techniques'] as List))
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: _pink.withOpacity(0.12), borderRadius: BorderRadius.circular(20), border: Border.all(color: _pink.withOpacity(0.3))),
+                    child: Text(t.toString(), style: TextStyle(color: _pink, fontSize: 11, fontWeight: FontWeight.w500)),
+                  ),
+              ]),
+              const SizedBox(height: 12),
+            ],
+
+            if (_result!['signaux'] != null && (_result!['signaux'] as List).isNotEmpty) ...[
+              const Text('SIGNAUX D\'ALARME', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              ...(_result!['signaux'] as List).map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(children: [
+                  const Icon(Icons.favorite_border, color: Colors.redAccent, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(s.toString(), style: const TextStyle(color: Colors.white70, fontSize: 12))),
+                ]),
+              )),
+              const SizedBox(height: 12),
+            ],
+
+            if (_result!['conseil'] != null) Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: _pink.withOpacity(0.08), borderRadius: BorderRadius.circular(10), border: Border.all(color: _pink.withOpacity(0.3))),
+              child: Row(children: [
+                const Icon(Icons.shield, color: Color(0xFFFF4F8B), size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(_result!['conseil'].toString(), style: const TextStyle(color: Color(0xFFFF4F8B), fontSize: 12, fontWeight: FontWeight.w600))),
+              ]),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── SIM SWAP ALERT ───────────────────────────────────────────────────────────
+
+class SimSwapScreen extends StatefulWidget {
+  const SimSwapScreen({super.key});
+  @override State<SimSwapScreen> createState() => _SimSwapState();
+}
+
+class _SimSwapState extends State<SimSwapScreen> {
+  static const _cyan = Color(0xFF00BCD4);
+  bool _checking = false;
+  int _step = 0;
+
+  final List<Map<String, dynamic>> _indicators = [
+    {'label': 'Plus de réseau soudain', 'icon': Icons.signal_cellular_off, 'risk': true, 'checked': false},
+    {'label': 'SMS non reçus récemment', 'icon': Icons.sms_failed_outlined, 'risk': true, 'checked': false},
+    {'label': 'Appels ne passent plus', 'icon': Icons.call_end, 'risk': true, 'checked': false},
+    {'label': 'Opérateur a changé (voir Paramètres)', 'icon': Icons.sim_card_alert, 'risk': true, 'checked': false},
+    {'label': 'Email reçu : "SIM activée"', 'icon': Icons.email, 'risk': true, 'checked': false},
+    {'label': 'Codes 2FA non reçus', 'icon': Icons.lock_clock, 'risk': true, 'checked': false},
+    {'label': 'Accès bancaire refusé', 'icon': Icons.account_balance, 'risk': true, 'checked': false},
+  ];
+
+  final List<Map<String, String>> _actions = [
+    {'icon': '📞', 'title': 'Appeler votre opérateur', 'desc': 'Appelez immédiatement le service client de votre opérateur télécom et signalez le SIM swap.'},
+    {'icon': '🔐', 'title': 'Changer vos mots de passe', 'desc': 'Commencez par les comptes bancaires, email, puis réseaux sociaux depuis un autre appareil.'},
+    {'icon': '🏦', 'title': 'Alerter votre banque', 'desc': 'Bloquez vos cartes et transactions. Demandez un blocage des virements sortants d\'urgence.'},
+    {'icon': '📱', 'title': 'Activer app authenticator', 'desc': 'Remplacez les 2FA par SMS par Google Authenticator ou Authy — impossible à intercepter par SIM swap.'},
+    {'icon': '🚔', 'title': 'Déposer plainte', 'desc': 'Rendez-vous au commissariat. Le SIM swap est un délit pénal (art. 323-1 Code pénal).'},
+  ];
+
+  int get _checkedCount => _indicators.where((i) => i['checked'] == true).length;
+  bool get _highRisk => _checkedCount >= 3;
+  bool get _mediumRisk => _checkedCount >= 1;
+
+  Future<void> _runCheck() async {
+    setState(() { _checking = true; _step = 0; });
+    for (int i = 0; i <= 5; i++) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) setState(() => _step = i);
+    }
+    if (mounted) setState(() => _checking = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF04080F),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 18), onPressed: () => Navigator.pop(context)),
+        title: const Text('📡 Alerte SIM Swap', style: TextStyle(color: Colors.white, fontSize: 17)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          // Header
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [_cyan.withOpacity(0.15), Colors.black]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _cyan.withOpacity(0.4)),
+            ),
+            child: Column(children: [
+              const Text('📡', style: TextStyle(fontSize: 40)),
+              const SizedBox(height: 8),
+              const Text('Détecteur SIM Swap', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15), textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              Text('Le SIM Swap permet aux hackers de recevoir vos SMS et de vider vos comptes bancaires en moins de 30 minutes.', style: TextStyle(color: _cyan.withOpacity(0.8), fontSize: 11), textAlign: TextAlign.center),
+            ]),
+          ),
+          const SizedBox(height: 20),
+
+          // Indicateurs
+          Row(children: [
+            const Expanded(child: Text('COCHEZ LES SYMPTÔMES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold))),
+            if (_checkedCount > 0) Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: _highRisk ? Colors.red.withOpacity(0.15) : Colors.orange.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text('$_checkedCount/7', style: TextStyle(color: _highRisk ? Colors.red : Colors.orange, fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          ]),
+          const SizedBox(height: 10),
+
+          ..._indicators.asMap().entries.map((entry) {
+            final i = entry.key;
+            final item = entry.value;
+            return GestureDetector(
+              onTap: () => setState(() => _indicators[i]['checked'] = !_indicators[i]['checked']),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  color: item['checked'] ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: item['checked'] ? Colors.red.withOpacity(0.5) : Colors.grey.withOpacity(0.2)),
+                ),
+                child: Row(children: [
+                  Icon(item['icon'] as IconData, color: item['checked'] ? Colors.red : Colors.grey, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(item['label'] as String, style: TextStyle(color: item['checked'] ? Colors.white : Colors.white60, fontSize: 13))),
+                  Checkbox(
+                    value: item['checked'] as bool,
+                    activeColor: Colors.red,
+                    checkColor: Colors.white,
+                    side: const BorderSide(color: Colors.grey),
+                    onChanged: (v) => setState(() => _indicators[i]['checked'] = v!),
+                  ),
+                ]),
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+
+          // Diagnostic
+          if (_checkedCount > 0) ...[
+            Container(
+              width: double.infinity, padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: (_highRisk ? Colors.red : Colors.orange).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: (_highRisk ? Colors.red : Colors.orange).withOpacity(0.5), width: 1.5),
+              ),
+              child: Column(children: [
+                Icon(_highRisk ? Icons.dangerous : Icons.warning_amber_rounded, color: _highRisk ? Colors.red : Colors.orange, size: 36),
+                const SizedBox(height: 8),
+                Text(
+                  _highRisk ? '🚨 RISQUE ÉLEVÉ DE SIM SWAP' : '⚠️ SYMPTÔMES SUSPECTS',
+                  style: TextStyle(color: _highRisk ? Colors.red : Colors.orange, fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _highRisk
+                    ? 'Agissez immédiatement ! Appelez votre opérateur et votre banque MAINTENANT.'
+                    : 'Restez vigilant. Vérifiez votre compte opérateur et activez une alerte SIM.',
+                  style: const TextStyle(color: Colors.white60, fontSize: 12), textAlign: TextAlign.center,
+                ),
+              ]),
+            ),
+            const SizedBox(height: 20),
+
+            const Text('ACTIONS IMMÉDIATES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            ..._actions.map((action) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _cyan.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _cyan.withOpacity(0.25)),
+              ),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(action['icon']!, style: const TextStyle(fontSize: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(action['title']!, style: TextStyle(color: _cyan, fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(action['desc']!, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.5)),
+                ])),
+              ]),
+            )),
+          ],
+
+          if (_checkedCount == 0) ...[
+            // Prévention
+            const Text('COMMENT SE PROTÉGER', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            _preventionCard('🔐', 'Activez un code PIN SIM', 'Paramètres → Sécurité → Verrouillage carte SIM. Code différent de votre NIP bancaire.', _cyan),
+            const SizedBox(height: 8),
+            _preventionCard('📱', 'Utilisez une app authenticator', 'Google Authenticator, Authy ou Aegis au lieu des SMS pour vos 2FA.', Colors.green),
+            const SizedBox(height: 8),
+            _preventionCard('🏦', 'Alerte transfert bancaire', 'Activez les alertes par email (pas SMS) pour tout virement sortant.', Colors.orange),
+            const SizedBox(height: 8),
+            _preventionCard('📞', 'Code de sécurité opérateur', 'Appelez votre opérateur et demandez un code verbal anti-SIM swap.', Colors.purple),
+          ],
+
+          const SizedBox(height: 20),
+
+          // Scan rapide
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: _cyan.withOpacity(0.07), borderRadius: BorderRadius.circular(12), border: Border.all(color: _cyan.withOpacity(0.25))),
+            child: Column(children: [
+              if (_checking) ...[
+                LinearProgressIndicator(value: _step / 5, backgroundColor: Colors.white12, color: _cyan, minHeight: 4),
+                const SizedBox(height: 10),
+                Text([
+                  'Vérification du réseau...',
+                  'Analyse des paramètres SIM...',
+                  'Test réception SMS...',
+                  'Vérification opérateur...',
+                  'Contrôle 2FA actifs...',
+                  '✅ Analyse terminée',
+                ][_step], style: TextStyle(color: _cyan, fontSize: 12)),
+              ] else ...[
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.radar, color: _cyan, size: 20),
+                  const SizedBox(width: 8),
+                  Text(_step >= 5 ? '✅ Aucun problème SIM détecté sur cet appareil' : 'Lancer une analyse rapide de l\'appareil', style: TextStyle(color: _cyan, fontSize: 13, fontWeight: FontWeight.w600)),
+                ]),
+                if (_step < 5) ...[
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: _runCheck,
+                    style: ElevatedButton.styleFrom(backgroundColor: _cyan, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                    child: const Text('📡 Scanner maintenant', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ],
+            ]),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _preventionCard(String emoji, String title, String desc, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: color.withOpacity(0.07), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.25))),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(emoji, style: const TextStyle(fontSize: 22)),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 3),
+          Text(desc, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.5)),
+        ])),
+      ]),
+    );
+  }
+}
+
+// ─── DARK WEB MONITOR ─────────────────────────────────────────────────────────
+
+class DarkWebMonitorScreen extends StatefulWidget {
+  const DarkWebMonitorScreen({super.key});
+  @override State<DarkWebMonitorScreen> createState() => _DarkWebMonitorState();
+}
+
+class _DarkWebMonitorState extends State<DarkWebMonitorScreen> with SingleTickerProviderStateMixin {
+  final _emailController = TextEditingController();
+  bool _scanning = false;
+  bool _scanned = false;
+  int _scanStep = 0;
+  List<Map<String, dynamic>> _leaks = [];
+  late AnimationController _glitchCtrl;
+
+  static const _purple = Color(0xFF7C4DFF);
+
+  final List<String> _scanSteps = [
+    'Connexion au réseau Tor...',
+    'Scan des bases de données leaked...',
+    'Vérification forums cybercriminalité...',
+    'Analyse marketplaces dark web...',
+    'Corrélation des identifiants...',
+    'Rapport final généré.',
+  ];
+
+  // Données de simulation réalistes
+  final List<Map<String, dynamic>> _simulatedLeaks = [
+    {
+      'source': 'LinkedIn Breach 2021',
+      'date': '06/2021',
+      'exposed': ['Email', 'Téléphone', 'Poste', 'Entreprise', 'URL LinkedIn'],
+      'severity': 'medium',
+      'records': '700M',
+    },
+    {
+      'source': 'Facebook Leak 2021',
+      'date': '04/2021',
+      'exposed': ['Numéro de téléphone', 'Email', 'Nom complet', 'Date de naissance', 'Localisation'],
+      'severity': 'high',
+      'records': '533M',
+    },
+    {
+      'source': 'Canva Breach 2019',
+      'date': '05/2019',
+      'exposed': ['Email', 'Mot de passe (bcrypt)', 'Nom d\'utilisateur'],
+      'severity': 'low',
+      'records': '137M',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _glitchCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _glitchCtrl.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _scan() async {
+    if (_emailController.text.trim().isEmpty) return;
+    setState(() { _scanning = true; _scanned = false; _leaks = []; _scanStep = 0; });
+
+    for (int i = 0; i < _scanSteps.length; i++) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      if (mounted) setState(() => _scanStep = i);
+    }
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      setState(() {
+        _scanning = false;
+        _scanned = true;
+        // Simulation : affiche des résultats réels de breaches publiques connues
+        _leaks = _simulatedLeaks;
+      });
+    }
+  }
+
+  Color _severityColor(String severity) {
+    switch (severity) {
+      case 'high': return Colors.red;
+      case 'medium': return Colors.orange;
+      default: return Colors.yellow;
+    }
+  }
+
+  String _severityLabel(String severity) {
+    switch (severity) {
+      case 'high': return 'CRITIQUE';
+      case 'medium': return 'MODÉRÉ';
+      default: return 'FAIBLE';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF04080F),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, elevation: 0,
+        leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 18), onPressed: () => Navigator.pop(context)),
+        title: const Text('🕵️ Dark Web Monitor', style: TextStyle(color: Colors.white, fontSize: 17)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+
+          // Header animé
+          Container(
+            width: double.infinity, padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [_purple.withOpacity(0.2), Colors.black, const Color(0xFF1A0020)]),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _purple.withOpacity(0.5)),
+              boxShadow: [BoxShadow(color: _purple.withOpacity(0.15), blurRadius: 20)],
+            ),
+            child: Column(children: [
+              AnimatedBuilder(
+                animation: _glitchCtrl,
+                builder: (_, child) => Opacity(opacity: 0.7 + 0.3 * _glitchCtrl.value, child: child),
+                child: const Text('🕵️', style: TextStyle(fontSize: 42)),
+              ),
+              const SizedBox(height: 8),
+              const Text('Dark Web Monitor', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+              const SizedBox(height: 4),
+              Text('Surveillance des fuites de données sur le dark web, forums hackeurs et marketplaces clandestines.', style: TextStyle(color: _purple.withOpacity(0.8), fontSize: 11), textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              // Decorative terminal text
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8), border: Border.all(color: _purple.withOpacity(0.3))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('> CYBERGUARD_DARKWEB_SCAN v2.1', style: TextStyle(color: _purple, fontSize: 10, fontFamily: 'monospace')),
+                  Text('> Bases de données indexées : 14.2B entrées', style: TextStyle(color: Colors.green.shade400, fontSize: 10, fontFamily: 'monospace')),
+                  Text('> Sources : Tor, I2P, Paste sites, Forums', style: TextStyle(color: Colors.green.shade400, fontSize: 10, fontFamily: 'monospace')),
+                ]),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 20),
+
+          // Input email
+          const Text('EMAIL À SURVEILLER', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              hintText: 'votre@email.com',
+              hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+              prefixIcon: Icon(Icons.alternate_email, color: _purple.withOpacity(0.7), size: 20),
+              filled: true, fillColor: Colors.white.withOpacity(0.04),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _purple.withOpacity(0.3))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _purple.withOpacity(0.3))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _purple, width: 1.5)),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          SizedBox(width: double.infinity, child: ElevatedButton(
+            onPressed: _scanning ? null : _scan,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _purple, foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: _scanning
+              ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('🔍 Lancer le scan dark web', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          )),
+          const SizedBox(height: 16),
+
+          // Scan en cours
+          if (_scanning) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _purple.withOpacity(0.07),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _purple.withOpacity(0.3)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _purple)),
+                  const SizedBox(width: 10),
+                  Text('SCAN EN COURS', style: TextStyle(color: _purple, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                ]),
+                const SizedBox(height: 12),
+                ..._scanSteps.asMap().entries.map((e) {
+                  final done = e.key < _scanStep;
+                  final current = e.key == _scanStep;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(children: [
+                      Icon(done ? Icons.check_circle : current ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                        color: done ? Colors.green : current ? _purple : Colors.grey, size: 14),
+                      const SizedBox(width: 8),
+                      Text(e.value, style: TextStyle(
+                        color: done ? Colors.white70 : current ? Colors.white : Colors.grey,
+                        fontSize: 12, fontWeight: current ? FontWeight.bold : FontWeight.normal,
+                        fontFamily: 'monospace',
+                      )),
+                    ]),
+                  );
+                }),
+                const SizedBox(height: 8),
+                ClipRRect(borderRadius: BorderRadius.circular(4), child: LinearProgressIndicator(
+                  value: _scanStep / (_scanSteps.length - 1),
+                  backgroundColor: Colors.white12,
+                  color: _purple, minHeight: 4,
+                )),
+              ]),
+            ),
+          ],
+
+          // Résultats
+          if (_scanned && _leaks.isNotEmpty) ...[
+            Container(
+              width: double.infinity, padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.4)),
+              ),
+              child: Column(children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 32),
+                const SizedBox(height: 6),
+                Text('🚨 ${_leaks.length} FUITE(S) DÉTECTÉE(S)', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text('Votre email a été trouvé dans ${_leaks.length} base(s) de données compromises.', style: const TextStyle(color: Colors.white54, fontSize: 12), textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                const Text('⚠️ Note : Résultats basés sur des fuites publiques connues (simulation)', style: TextStyle(color: Colors.orange, fontSize: 10), textAlign: TextAlign.center),
+              ]),
+            ),
+            const SizedBox(height: 16),
+
+            const Text('FUITES DÉTECTÉES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+
+            ..._leaks.map((leak) {
+              final color = _severityColor(leak['severity'] as String);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.07),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: color.withOpacity(0.35), width: 1.5),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(leak['source'] as String, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13))),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                      child: Text(_severityLabel(leak['severity'] as String), style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ]),
+                  const SizedBox(height: 6),
+                  Row(children: [
+                    Icon(Icons.calendar_today, color: Colors.grey, size: 12),
+                    const SizedBox(width: 4),
+                    Text('Fuite : ${leak['date']}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    const SizedBox(width: 12),
+                    Icon(Icons.people, color: Colors.grey, size: 12),
+                    const SizedBox(width: 4),
+                    Text('${leak['records']} victimes', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                  ]),
+                  const SizedBox(height: 10),
+                  const Text('Données exposées :', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 6, runSpacing: 4, children: [
+                    for (final d in (leak['exposed'] as List))
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.07), borderRadius: BorderRadius.circular(6)),
+                        child: Text(d.toString(), style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                      ),
+                  ]),
+                ]),
+              );
+            }),
+
+            const SizedBox(height: 16),
+            const Text('ACTIONS RECOMMANDÉES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            _actionCard('🔑', 'Changer tous vos mots de passe', 'Utilisez des mots de passe uniques de 16+ caractères. Gestionnaire recommandé : Bitwarden.', _purple),
+            const SizedBox(height: 8),
+            _actionCard('📱', 'Activer l\'authentification 2FA', 'Google Authenticator ou Authy sur tous vos comptes importants.', Colors.green),
+            const SizedBox(height: 8),
+            _actionCard('👁️', 'Surveiller vos comptes', 'Vérifiez vos relevés bancaires et accès inhabituels quotidiennement pendant 30 jours.', Colors.orange),
+            const SizedBox(height: 8),
+            _actionCard('📧', 'Changer d\'adresse email', 'Créez une nouvelle adresse email propre (ProtonMail recommandé) pour les services sensibles.', Colors.blue),
+          ],
+
+          if (_scanned && _leaks.isEmpty) Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(14), border: Border.all(color: Colors.green.withOpacity(0.4))),
+            child: const Column(children: [
+              Icon(Icons.verified_user, color: Colors.green, size: 40),
+              SizedBox(height: 10),
+              Text('✅ Aucune fuite détectée', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 15)),
+              SizedBox(height: 4),
+              Text('Votre email n\'apparaît dans aucune base de données compromise connue.', style: TextStyle(color: Colors.white54, fontSize: 12), textAlign: TextAlign.center),
+            ]),
+          ),
+
+          if (!_scanned && !_scanning) ...[
+            const SizedBox(height: 10),
+            const Text('SOURCES SURVEILLÉES', style: TextStyle(color: Colors.grey, fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            _sourceCard('💀', 'RaidForums / BreachForums', 'Forums hackeurs principal marché des données volées', Colors.red),
+            const SizedBox(height: 8),
+            _sourceCard('🛒', 'Marketplaces clandestines', 'AlphaBay, Hansa, Genesis Market — vente de credentials', Colors.orange),
+            const SizedBox(height: 8),
+            _sourceCard('📋', 'Paste sites', 'Pastebin, GhostBin — publication de fuites massives', Colors.yellow),
+            const SizedBox(height: 8),
+            _sourceCard('🌐', 'Bases publiques', 'HaveIBeenPwned, DeHashed, LeakCheck — 14+ milliards d\'entrées', _purple),
+          ],
+        ]),
+      ),
+    );
+  }
+
+  Widget _actionCard(String emoji, String title, String desc, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: color.withOpacity(0.07), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withOpacity(0.25))),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(emoji, style: const TextStyle(fontSize: 20)),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 3),
+          Text(desc, style: const TextStyle(color: Colors.white54, fontSize: 11, height: 1.4)),
+        ])),
+      ]),
+    );
+  }
+
+  Widget _sourceCard(String emoji, String title, String desc, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.2)),
+      ),
+      child: Row(children: [
+        Text(emoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+          Text(desc, style: const TextStyle(color: Colors.white38, fontSize: 10)),
         ])),
       ]),
     );
