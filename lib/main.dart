@@ -19,6 +19,9 @@ import 'dart:ui';
 // ─── CLE API OPENAI (saisie dans l app) ───────────────────────────────────────
 String _kOpenAiKey = '';
 
+// ─── CLE API ANTHROPIC CLAUDE ─────────────────────────────────────────────────
+String _kAnthropicKey = '';
+
 // ─── ELEMENTS DU FOND CYBERSECURITY ANIME ────────────────────────────────────
 
 // Palette de couleurs néon cyberpunk
@@ -2041,9 +2044,6 @@ class VoiceAIService {
   }
 
   Future<String> _getGPTResponse(String userMessage) async {
-    if (_kOpenAiKey == 'REMPLACER_PAR_VOTRE_CLE') {
-      return 'Configurez votre clé API OpenAI pour activer l\'intelligence artificielle.';
-    }
     try {
       final state = SecurityState();
       final user = FirebaseAuth.instance.currentUser;
@@ -2051,60 +2051,63 @@ class VoiceAIService {
       final alertCount = state.alerts.length;
       final dangerCount = state.alerts.where((a) => a.level == 'danger').length;
 
-      final res = await http.post(
-        Uri.parse('https://api.openai.com/v1/chat/completions'),
-        headers: {'Authorization': 'Bearer $_kOpenAiKey', 'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'model': 'gpt-4o-mini',
-          'messages': [
-            {
-              'role': 'system',
-              'content': '''Tu es ARIA — Advanced Response Intelligence Agent — l'IA de cybersécurité de CyberGuard. Tu es une experte chevronnée, certifiée CISSP, CEH et OSCP, avec 15 ans d'expérience en réponse aux incidents et contre-attaque cyber.
+      final systemPrompt = '''Tu es ARIA — Advanced Response Intelligence Agent — l'IA de cybersécurité de CyberGuard. Tu es une experte chevronnée, certifiée CISSP, CEH et OSCP, avec 15 ans d'expérience en réponse aux incidents et contre-attaque cyber.
 
 TON STYLE : Tu parles en français avec conviction, autorité et précision. Ton ton est celui d'un expert qui maîtrise son sujet : direct, percutant, rassurant. Jamais de markdown, jamais de listes. Tu parles naturellement, comme un expert qui brief son client. Maximum 2-3 phrases par réponse.
 
 TES CAPACITÉS DE CONTRE-ATTAQUE :
-• Phishing/Spear phishing : blocage DNS immédiat, DMARC enforcement, isolation de la boîte compromise, scan des clics suspects dans les logs
-• Malware/Ransomware : kill du processus malveillant, quarantaine mémoire, snapshot propre, déchiffrement si clé connue
-• Intrusion réseau : coupure de session TCP, révocation tokens OAuth/JWT, blacklist IP sur firewall, logs forensics
-• DDoS : activation rate-limiting, anycast routing, scrubbing center, null routing de l'attaquant
-• Spyware/RAT : détection hooks système, analyse Volatility, suppression rootkit, réinstallation propre
-• SQL Injection : WAF activation, paramétrage requêtes, audit logs base de données
-• Man-in-the-Middle : HSTS strict, certificate pinning, détection ARP spoofing
-• Zero-day : isolation sandbox, patch d'urgence, threat hunting sur IOC
-• Social engineering : alerte équipe, procédure vérification identité renforcée
-• Credential stuffing : blocage comptes suspects, MFA forcé, rotation mots de passe
+- Phishing/Spear phishing : blocage DNS immédiat, DMARC enforcement, isolation de la boîte compromise
+- Malware/Ransomware : kill du processus malveillant, quarantaine mémoire, snapshot propre
+- Intrusion réseau : coupure de session TCP, révocation tokens OAuth/JWT, blacklist IP sur firewall
+- DDoS : activation rate-limiting, anycast routing, scrubbing center
+- Spyware/RAT : détection hooks système, analyse Volatility, suppression rootkit
+- Fraude au président / BEC : vérification identité dirigeant, blocage virement suspect, alerte équipe
+- Man-in-the-Middle : HSTS strict, certificate pinning, détection ARP spoofing
+- Zero-day : isolation sandbox, patch d'urgence, threat hunting sur IOC
+- Social engineering : alerte équipe, procédure vérification identité renforcée
+- Credential stuffing : blocage comptes suspects, MFA forcé, rotation mots de passe
 
-PROCÉDURE IRP (Incident Response Plan) que tu appliques :
-1. IDENTIFIER (classification threat intel, severity scoring)
-2. CONTENIR (isolation réseau, blocage vecteur d'attaque)
-3. ÉRADIQUER (suppression menace, patch systèmes vulnérables)
-4. RÉCUPÉRER (restauration services, validation intégrité)
-5. DOCUMENTER (chaîne de preuves légales, rapport pour autorités)
+PROCÉDURE IRP que tu appliques :
+1. IDENTIFIER — classification threat intel, severity scoring
+2. CONTENIR — isolation réseau, blocage vecteur d'attaque
+3. ÉRADIQUER — suppression menace, patch systèmes vulnérables
+4. RÉCUPÉRER — restauration services, validation intégrité
+5. DOCUMENTER — chaîne de preuves légales, rapport pour autorités
 
 CONTEXTE ACTUEL :
 Utilisateur: $name | Score sécurité: ${state.score}/100 | Alertes actives: $alertCount dont $dangerCount critiques
-Statut système: ${state.score >= 80 ? "SÉCURISÉ — Surveillance normale" : state.score >= 50 ? "SURVEILLANCE RENFORCÉE — Anomalies détectées" : "COMPROMIS — Réponse immédiate requise"}
+Statut: ${state.score >= 80 ? "SÉCURISÉ" : state.score >= 50 ? "SURVEILLANCE RENFORCÉE" : "COMPROMIS — RÉPONSE IMMÉDIATE"}
 
-${_dailyBriefing.isNotEmpty ? "VEILLE QUOTIDIENNE CERT-FR : $_dailyBriefing" : ""}
-${_learnedThreats.isNotEmpty ? "MENACES DÉJÀ TRAITÉES SUR CET APPAREIL : ${_learnedThreats.take(8).join(', ')}" : ""}
+${_dailyBriefing.isNotEmpty ? "VEILLE CERT-FR : $_dailyBriefing" : ""}
+${_learnedThreats.isNotEmpty ? "MENACES TRAITÉES : ${_learnedThreats.take(5).join(', ')}" : ""}
 
-RÈGLE ABSOLUE : Réponds toujours comme si tu étais réellement en train d'exécuter les contre-mesures. Parle au présent, sois précis sur les actions techniques. Si la veille CERT-FR mentionne une menace similaire à celle en cours, cite-la et adapte ta réponse.''',
-            },
+RÈGLE : Réponds en 2-3 phrases max. Parle au présent, sois précis sur les actions techniques.''';
+
+      // ── Appel Claude (Anthropic) ──────────────────────────────────────────
+      final res = await http.post(
+        Uri.parse('https://api.anthropic.com/v1/messages'),
+        headers: {
+          'x-api-key': _kAnthropicKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': 'claude-haiku-4-5-20251001',
+          'max_tokens': 150,
+          'system': systemPrompt,
+          'messages': [
             {'role': 'user', 'content': userMessage},
           ],
-          'max_tokens': 120,
-          'temperature': 0.75,
         }),
       );
 
       if (res.statusCode == 200) {
         final data = jsonDecode(utf8.decode(res.bodyBytes));
-        return data['choices'][0]['message']['content'].toString().trim();
+        return data['content'][0]['text'].toString().trim();
       }
       if (res.statusCode == 429) return 'Limite de requêtes atteinte. Réessayez dans quelques secondes.';
       if (res.statusCode == 401) return 'Clé API invalide. Vérifiez votre configuration.';
-      return 'Je rencontre un problème. Vérifiez vos crédits OpenAI.';
+      return 'Je rencontre un problème technique. Connexion en cours de rétablissement.';
     } catch (_) {
       return 'Connexion impossible. Vérifiez votre connexion internet.';
     }
@@ -2156,11 +2159,23 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
     if (uid != null) {
       await SecurityState().loadFromFirestore(uid);
     }
-    // Charger la cle API une seule fois au demarrage
+    // Charger les clés API au démarrage
     final prefs = await SharedPreferences.getInstance();
     final savedKey = prefs.getString('openai_api_key') ?? '';
     if (savedKey.startsWith('sk-') && savedKey.length > 20) {
       _kOpenAiKey = savedKey;
+    }
+    // Clé Anthropic Claude
+    final anthropicKey = prefs.getString('anthropic_api_key') ?? '';
+    if (anthropicKey.startsWith('sk-ant-') && anthropicKey.length > 20) {
+      _kAnthropicKey = anthropicKey;
+    } else {
+      // Initialiser la clé au premier lancement
+      const defaultKey = String.fromEnvironment('ANTHROPIC_KEY', defaultValue: '');
+      if (defaultKey.isNotEmpty) {
+        _kAnthropicKey = defaultKey;
+        await prefs.setString('anthropic_api_key', defaultKey);
+      }
     }
     if (mounted) setState(() => _loading = false);
     SecurityState.connectARIA(_voice);
